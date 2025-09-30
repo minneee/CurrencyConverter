@@ -11,7 +11,14 @@ import SnapKit
 class ExchangeRateViewController: UIViewController {
   private let viewModel: ExchangeRateViewModel
   private let activityIndicator = UIActivityIndicatorView(style: .large)
-  
+
+  private var searchBar: UISearchBar = {
+    let searchBar = UISearchBar()
+    searchBar.placeholder = "통화 검색"
+    searchBar.searchBarStyle = .minimal
+    return searchBar
+  }()
+
   private lazy var tableView: UITableView = {
     let tableView = UITableView()
     tableView.backgroundColor = .background
@@ -32,6 +39,7 @@ class ExchangeRateViewController: UIViewController {
   
   override func viewDidLoad() {
     super.viewDidLoad()
+    navigationController?.navigationBar.isHidden = true
     configureUI()
     tableView.rowHeight = UITableView.automaticDimension
     tableView.estimatedRowHeight = 60
@@ -44,11 +52,18 @@ class ExchangeRateViewController: UIViewController {
   private func configureUI() {
     view.backgroundColor = .background
     [
+      searchBar,
       tableView
     ].forEach { view.addSubview($0) }
-    
+
+    searchBar.snp.makeConstraints {
+      $0.top.equalTo(view.safeAreaLayoutGuide)
+      $0.leading.trailing.equalToSuperview()
+    }
+
     tableView.snp.makeConstraints {
-      $0.edges.equalToSuperview()
+      $0.top.equalTo(searchBar.snp.bottom)
+      $0.leading.trailing.bottom.equalTo(view.safeAreaLayoutGuide)
     }
   }
   
@@ -74,7 +89,7 @@ class ExchangeRateViewController: UIViewController {
     
     // 에러 발생 시 Alert 띄우기
     viewModel.onError = { [weak self] message in
-      let alert = UIAlertController(title: "에러", message: message, preferredStyle: .alert)
+      let alert = UIAlertController(title: "오류", message: "데이터를 불러올 수 없습니다", preferredStyle: .alert)
       alert.addAction(UIAlertAction(title: "확인", style: .default))
       self?.present(alert, animated: true)
     }
@@ -91,7 +106,9 @@ extension ExchangeRateViewController: UITableViewDataSource {
   
   func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
     guard let cell = tableView.dequeueReusableCell(withIdentifier: ExchangeRateCellView.id) as? ExchangeRateCellView else { return UITableViewCell() }
-    cell.configureCell(exchangeRate: viewModel.exchangeRates[indexPath.row])
+    let exchangeRate = viewModel.exchangeRates[indexPath.row]
+    let countryName = viewModel.countryName(currencyCode: exchangeRate.currencyCode)
+    cell.configureCell(exchangeRate: exchangeRate, countryName: countryName)
     return cell
   }
 }

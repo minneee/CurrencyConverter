@@ -10,7 +10,8 @@ import Foundation
 /// ViewModel: View와 Repository 사이에서 "중간 다리" 역할
 @MainActor
 final class ExchangeRateViewModel {
-  private let fetchExchangeRatesUseCaseProtocol: FetchExchangeRatesUseCaseProtocol
+  private let fetchExchangeRatesUseCase: FetchExchangeRatesUseCaseProtocol
+  private let getCountryNameUseCase: GetCountryNameUseCaseProtocol
 
   /// 현재 화면에서 보여줄 환율 데이터
   private(set) var exchangeRates: [ExchangeRate] = [] {
@@ -31,8 +32,12 @@ final class ExchangeRateViewModel {
   var onLoadingStateChange: ((Bool) -> Void)?
   var onError: ((String) -> Void)?
   
-  init(fetchExchangeRatesUseCaseProtocol: FetchExchangeRatesUseCaseProtocol) {
-    self.fetchExchangeRatesUseCaseProtocol = fetchExchangeRatesUseCaseProtocol
+  init(
+    fetchExchangeRatesUseCase: FetchExchangeRatesUseCaseProtocol,
+    getCountryNameUseCase: GetCountryNameUseCaseProtocol
+  ) {
+    self.fetchExchangeRatesUseCase = fetchExchangeRatesUseCase
+    self.getCountryNameUseCase = getCountryNameUseCase
   }
   
   /// 환율 데이터 로드
@@ -41,12 +46,16 @@ final class ExchangeRateViewModel {
     
     Task {
       do {
-        let rates = try await fetchExchangeRatesUseCaseProtocol.execute()
+        let rates = try await fetchExchangeRatesUseCase.execute()
         exchangeRates = rates
       } catch {
         errorMessage = error.localizedDescription
       }
       isLoading = false
     }
+  }
+
+  func countryName(currencyCode: String) -> String? {
+    getCountryNameUseCase.execute(currencyCode: currencyCode)
   }
 }

@@ -15,10 +15,25 @@ final class ExchangeRateCellView: UITableViewCell {
     let label = UILabel()
     label.text = "KRW"
     label.textColor = .text
-    label.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+    label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
     return label
   }()
-  
+
+  let countryNameLabel: UILabel = {
+    let label = UILabel()
+    label.text = "대한민국"
+    label.textColor = .secondaryText
+    label.font = UIFont.systemFont(ofSize: 14)
+    return label
+  }()
+
+  let labelStackView: UIStackView = {
+    let stackView = UIStackView()
+    stackView.axis = .vertical
+    stackView.spacing = 4
+    return stackView
+  }()
+
   let exchangeRateLabel: UILabel = {
     let label = UILabel()
     label.text = "0"
@@ -55,18 +70,28 @@ final class ExchangeRateCellView: UITableViewCell {
     ].forEach { contentView.addSubview($0) }
     
     [
-      currencyNameLabel,
+      labelStackView,
       spacerView,
       exchangeRateLabel
     ].forEach { exchangeRateStackView.addArrangedSubview($0) }
-    
+
+    [
+      currencyNameLabel,
+      countryNameLabel
+    ].forEach { labelStackView.addArrangedSubview($0) }
+
     exchangeRateStackView.snp.makeConstraints {
       $0.top.bottom.equalToSuperview().inset(12)
       $0.leading.trailing.equalToSuperview().inset(30)
     }
   }
   
-  func configureCell(exchangeRate: ExchangeRate) {
+  func configureCell(exchangeRate: ExchangeRate, countryName: String?) {
+    if let countryName = countryName, !countryName.isEmpty {
+      countryNameLabel.text = countryName
+    } else {
+      countryNameLabel.text = "-"
+    }
     currencyNameLabel.text = exchangeRate.currencyCode
     exchangeRateLabel.text = String(format: "%.4f", exchangeRate.rate)
   }
