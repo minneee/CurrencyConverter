@@ -13,6 +13,7 @@ final class ExchangeRateViewModel {
   private let fetchExchangeRatesUseCase: FetchExchangeRatesUseCaseProtocol
   private let getCountryNameUseCase: GetCountryNameUseCaseProtocol
 
+  private var allExchangeRates: [ExchangeRate] = []
   /// 현재 화면에서 보여줄 환율 데이터
   private(set) var exchangeRates: [ExchangeRate] = [] {
     didSet { onUpdate?() }
@@ -47,6 +48,7 @@ final class ExchangeRateViewModel {
     Task {
       do {
         let rates = try await fetchExchangeRatesUseCase.execute()
+        allExchangeRates = rates
         exchangeRates = rates
       } catch {
         errorMessage = error.localizedDescription
@@ -57,5 +59,25 @@ final class ExchangeRateViewModel {
 
   func countryName(currencyCode: String) -> String? {
     getCountryNameUseCase.execute(currencyCode: currencyCode)
+  }
+
+  /// 검색어에 맞춰 환율 데이터를 필터링합니다.
+  func filterExchangeRates(with query: String) {
+    let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    guard !trimmedQuery.isEmpty else {
+      exchangeRates = allExchangeRates
+      return
+    }
+
+    let lowercasedQuery = trimmedQuery.lowercased()
+
+    exchangeRates = allExchangeRates.filter { rate in
+      let matchesCurrencyCode = rate.currencyCode.lowercased().contains(lowercasedQuery)
+      let countryName = countryName(currencyCode: rate.currencyCode)?.lowercased() ?? ""
+      let matchesCountryName = countryName.contains(lowercasedQuery)
+
+      return matchesCurrencyCode || matchesCountryName
+    }
   }
 }

@@ -12,6 +12,14 @@ class ExchangeRateViewController: UIViewController {
   private let viewModel: ExchangeRateViewModel
   private let activityIndicator = UIActivityIndicatorView(style: .large)
 
+  private lazy var emptyResultLabel: UILabel = {
+    let label = UILabel()
+    label.text = "검색 결과 없습니다."
+    label.textColor = .secondaryText
+    label.textAlignment = .center
+    return label
+  }()
+
   private var searchBar: UISearchBar = {
     let searchBar = UISearchBar()
     searchBar.placeholder = "통화 검색"
@@ -41,11 +49,12 @@ class ExchangeRateViewController: UIViewController {
     super.viewDidLoad()
     navigationController?.navigationBar.isHidden = true
     configureUI()
+    searchBar.delegate = self
     tableView.rowHeight = UITableView.automaticDimension
     tableView.estimatedRowHeight = 60
     setupActivityIndicator()
     bindViewModel()
-    
+
     viewModel.loadExchangeRates()
   }
   
@@ -80,6 +89,7 @@ class ExchangeRateViewController: UIViewController {
     // 데이터가 갱신되면 테이블뷰 리로드
     viewModel.onUpdate = { [weak self] in
       self?.tableView.reloadData()
+      self?.updateEmptyState()
     }
     
     // 로딩 상태 처리
@@ -93,6 +103,12 @@ class ExchangeRateViewController: UIViewController {
       alert.addAction(UIAlertAction(title: "확인", style: .default))
       self?.present(alert, animated: true)
     }
+  }
+
+  private func updateEmptyState() {
+    let query = searchBar.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let shouldShowEmptyState = !query.isEmpty && viewModel.exchangeRates.isEmpty
+    tableView.backgroundView = shouldShowEmptyState ? emptyResultLabel : nil
   }
 }
 
@@ -110,5 +126,15 @@ extension ExchangeRateViewController: UITableViewDataSource {
     let countryName = viewModel.countryName(currencyCode: exchangeRate.currencyCode)
     cell.configureCell(exchangeRate: exchangeRate, countryName: countryName)
     return cell
+  }
+}
+
+extension ExchangeRateViewController: UISearchBarDelegate {
+  func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+    viewModel.filterExchangeRates(with: searchText)
+  }
+
+  func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+    searchBar.resignFirstResponder()
   }
 }
