@@ -9,6 +9,7 @@ import UIKit
 import SnapKit
 
 class CurrencyConverterViewController: UIViewController {
+  let viewModel: CurrencyConverterViewModel
 
   let currencyLabel: UILabel = {
     let label = UILabel()
@@ -35,7 +36,7 @@ class CurrencyConverterViewController: UIViewController {
 
   let amountTextField: UITextField = {
     let textField = UITextField()
-    textField.placeholder = "금액을 입력하세요"
+    textField.placeholder = "달러(USD)를 입력하세요"
     textField.borderStyle = .roundedRect
     textField.keyboardType = .decimalPad
     textField.textAlignment = .center
@@ -61,10 +62,21 @@ class CurrencyConverterViewController: UIViewController {
     return label
   }()
 
+  init(viewModel: CurrencyConverterViewModel) {
+    self.viewModel = viewModel
+    super.init(nibName: nil, bundle: nil)
+  }
+  
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+  
   override func viewDidLoad() {
     super.viewDidLoad()
     navigationItem.title = "환율 계산기"
     configureUI()
+    convertButton.addTarget(self, action: #selector(convertButtonTapped), for: .touchUpInside)
+    updateLabel()
   }
 
   private func configureUI() {
@@ -102,5 +114,28 @@ class CurrencyConverterViewController: UIViewController {
       $0.top.equalTo(convertButton.snp.bottom).offset(32)
       $0.leading.trailing.equalToSuperview().inset(24)
     }
+  }
+
+  func updateLabel() {
+    currencyLabel.text = viewModel.exchangeRate.currencyCode
+    countryLabel.text = viewModel.countryName
+  }
+
+  @objc private func convertButtonTapped() {
+    guard let text = amountTextField.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+          !text.isEmpty,
+          let amount = Double(text) else {
+      let alert = UIAlertController(
+        title: "입력 오류",
+        message: "금액을 정확히 입력하세요.",
+        preferredStyle: .alert
+      )
+      alert.addAction(UIAlertAction(title: "확인", style: .default))
+      present(alert, animated: true)
+      return
+    }
+
+    let result = viewModel.convert(amount: amount)
+    resultLabel.text = String(format: "$%.2f -> %.2f %@", amount, result, viewModel.exchangeRate.currencyCode)
   }
 }

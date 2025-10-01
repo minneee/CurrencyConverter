@@ -114,7 +114,12 @@ class ExchangeRateViewController: UIViewController {
 
 extension ExchangeRateViewController: UITableViewDelegate {
   func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-    self.navigationController?.pushViewController(CurrencyConverterViewController(), animated: true)
+    tableView.deselectRow(at: indexPath, animated: true)
+    let selectedRate = viewModel.exchangeRates[indexPath.row]
+    let selectedCountry = viewModel.countryName(currencyCode: selectedRate.currencyCode) ?? "-"
+    let converterVM = CurrencyConverterViewModel(exchangeRate: selectedRate, countryName: selectedCountry)
+
+    self.navigationController?.pushViewController(CurrencyConverterViewController(viewModel: converterVM), animated: true)
   }
 }
 
