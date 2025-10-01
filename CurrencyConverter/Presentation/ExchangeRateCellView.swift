@@ -47,10 +47,21 @@ final class ExchangeRateCellView: UITableViewCell {
     view.setContentHuggingPriority(.defaultLow, for: .horizontal)
     return view
   }()
-  
+
+  let starToggleButton: UIButton = {
+    let button = UIButton(type: .custom)
+    button.tintColor = .systemYellow
+    button.setImage(UIImage(systemName: "star"), for: .normal)
+    button.setImage(UIImage(systemName: "star.fill"), for: .selected)
+    button.backgroundColor = .clear
+    return button
+  }()
+
   let exchangeRateStackView: UIStackView = {
     let stackView = UIStackView()
     stackView.axis = .horizontal
+    stackView.alignment = .center
+    stackView.spacing = 8
     return stackView
   }()
   
@@ -72,7 +83,8 @@ final class ExchangeRateCellView: UITableViewCell {
     [
       labelStackView,
       spacerView,
-      exchangeRateLabel
+      exchangeRateLabel,
+      starToggleButton
     ].forEach { exchangeRateStackView.addArrangedSubview($0) }
 
     [
@@ -84,8 +96,14 @@ final class ExchangeRateCellView: UITableViewCell {
       $0.top.bottom.equalToSuperview().inset(12)
       $0.leading.trailing.equalToSuperview().inset(30)
     }
+
+    starToggleButton.snp.makeConstraints {
+      $0.width.height.equalTo(26)
+    }
+
+    starToggleButton.addTarget(self, action: #selector(toggleFavorite), for: .touchUpInside)
   }
-  
+
   func configureCell(exchangeRate: ExchangeRate, countryName: String?) {
     if let countryName = countryName, !countryName.isEmpty {
       countryNameLabel.text = countryName
@@ -94,5 +112,11 @@ final class ExchangeRateCellView: UITableViewCell {
     }
     currencyNameLabel.text = exchangeRate.currencyCode
     exchangeRateLabel.text = String(format: "%.4f", exchangeRate.rate)
+
+    starToggleButton.isSelected = false
+  }
+
+  @objc private func toggleFavorite() {
+    starToggleButton.isSelected.toggle()
   }
 }
