@@ -47,7 +47,7 @@ class ExchangeRateViewController: UIViewController {
   
   override func viewDidLoad() {
     super.viewDidLoad()
-    navigationController?.navigationBar.isHidden = true
+    navigationItem.title = "환율 정보"
     configureUI()
     searchBar.delegate = self
     tableView.rowHeight = UITableView.automaticDimension
@@ -113,8 +113,11 @@ class ExchangeRateViewController: UIViewController {
 }
 
 extension ExchangeRateViewController: UITableViewDelegate {
-  
+  func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    self.navigationController?.pushViewController(CurrencyConverterViewController(), animated: true)
+  }
 }
+
 extension ExchangeRateViewController: UITableViewDataSource {
   func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
     viewModel.exchangeRates.count
