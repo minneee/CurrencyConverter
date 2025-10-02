@@ -11,7 +11,7 @@ import SnapKit
 final class ExchangeRateCellView: UITableViewCell {
   static let id = "ExchangeRateCellView"
   
-  let currencyNameLabel: UILabel = {
+  private let currencyNameLabel: UILabel = {
     let label = UILabel()
     label.text = "KRW"
     label.textColor = .text
@@ -19,7 +19,7 @@ final class ExchangeRateCellView: UITableViewCell {
     return label
   }()
 
-  let countryNameLabel: UILabel = {
+  private let countryNameLabel: UILabel = {
     let label = UILabel()
     label.text = "대한민국"
     label.textColor = .secondaryText
@@ -27,14 +27,14 @@ final class ExchangeRateCellView: UITableViewCell {
     return label
   }()
 
-  let labelStackView: UIStackView = {
+  private let labelStackView: UIStackView = {
     let stackView = UIStackView()
     stackView.axis = .vertical
     stackView.spacing = 4
     return stackView
   }()
 
-  let exchangeRateLabel: UILabel = {
+  private let exchangeRateLabel: UILabel = {
     let label = UILabel()
     label.text = "0"
     label.textColor = .text
@@ -42,13 +42,13 @@ final class ExchangeRateCellView: UITableViewCell {
     return label
   }()
   
-  let spacerView: UIView = {
+  private let spacerView: UIView = {
     let view = UIView()
     view.setContentHuggingPriority(.defaultLow, for: .horizontal)
     return view
   }()
 
-  let starToggleButton: UIButton = {
+  private let starToggleButton: UIButton = {
     let button = UIButton(type: .custom)
     button.tintColor = .systemYellow
     button.setImage(UIImage(systemName: "star"), for: .normal)
@@ -57,7 +57,7 @@ final class ExchangeRateCellView: UITableViewCell {
     return button
   }()
 
-  let exchangeRateStackView: UIStackView = {
+  private let exchangeRateStackView: UIStackView = {
     let stackView = UIStackView()
     stackView.axis = .horizontal
     stackView.alignment = .center

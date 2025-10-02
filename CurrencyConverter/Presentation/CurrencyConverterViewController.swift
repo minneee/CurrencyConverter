@@ -9,16 +9,17 @@ import UIKit
 import SnapKit
 
 class CurrencyConverterViewController: UIViewController {
-  let viewModel: CurrencyConverterViewModel
+  private let viewModel: CurrencyConverterViewModel
+  private var currentState: CurrencyConverterViewModel.State
 
-  let currencyLabel: UILabel = {
+  private let currencyLabel: UILabel = {
     let label = UILabel()
     label.text = "Currency"
     label.font = .systemFont(ofSize: 24, weight: .bold)
     return label
   }()
 
-  let countryLabel: UILabel = {
+  private let countryLabel: UILabel = {
     let label = UILabel()
     label.text = "Country"
     label.font = .systemFont(ofSize: 16)
@@ -26,7 +27,7 @@ class CurrencyConverterViewController: UIViewController {
     return label
   }()
 
-  let labelStackView: UIStackView = {
+  private let labelStackView: UIStackView = {
     let stackView = UIStackView()
     stackView.axis = .vertical
     stackView.spacing = 4
@@ -34,7 +35,7 @@ class CurrencyConverterViewController: UIViewController {
     return stackView
   }()
 
-  let amountTextField: UITextField = {
+  private let amountTextField: UITextField = {
     let textField = UITextField()
     textField.placeholder = "달러(USD)를 입력하세요"
     textField.borderStyle = .roundedRect
@@ -43,7 +44,7 @@ class CurrencyConverterViewController: UIViewController {
     return textField
   }()
 
-  let convertButton: UIButton = {
+  private let convertButton: UIButton = {
     let button = UIButton()
     button.setTitle("환율 계산", for: .normal)
     button.backgroundColor = .button
@@ -53,7 +54,7 @@ class CurrencyConverterViewController: UIViewController {
     return button
   }()
 
-  let resultLabel: UILabel = {
+  private let resultLabel: UILabel = {
     let label = UILabel()
     label.text = "계산 결과가 여기에 표시됩니다"
     label.font = .systemFont(ofSize: 20, weight: .medium)
@@ -64,6 +65,7 @@ class CurrencyConverterViewController: UIViewController {
 
   init(viewModel: CurrencyConverterViewModel) {
     self.viewModel = viewModel
+    self.currentState = viewModel.state
     super.init(nibName: nil, bundle: nil)
   }
   
@@ -76,7 +78,11 @@ class CurrencyConverterViewController: UIViewController {
     navigationItem.title = "환율 계산기"
     configureUI()
     convertButton.addTarget(self, action: #selector(convertButtonTapped), for: .touchUpInside)
-    updateLabel()
+    amountTextField.addTarget(self, action: #selector(amountTextFieldChanged(_:)), for: .editingChanged)
+    amountTextField.delegate = self
+    bindViewModel()
+
+    viewModel.action?(.appear)
   }
 
   private func configureUI() {
@@ -116,26 +122,52 @@ class CurrencyConverterViewController: UIViewController {
     }
   }
 
-  func updateLabel() {
-    currencyLabel.text = viewModel.exchangeRate.currencyCode
-    countryLabel.text = viewModel.countryName
+  @objc private func convertButtonTapped() {
+    viewModel.action?(.convert)
   }
 
-  @objc private func convertButtonTapped() {
-    guard let text = amountTextField.text?.trimmingCharacters(in: .whitespacesAndNewlines),
-          !text.isEmpty,
-          let amount = Double(text) else {
-      let alert = UIAlertController(
-        title: "입력 오류",
-        message: "금액을 정확히 입력하세요.",
-        preferredStyle: .alert
-      )
-      alert.addAction(UIAlertAction(title: "확인", style: .default))
-      present(alert, animated: true)
-      return
+  @objc private func amountTextFieldChanged(_ sender: UITextField) {
+    viewModel.action?(.amountChanged(sender.text ?? ""))
+  }
+
+  private func bindViewModel() {
+    apply(state: viewModel.state)
+
+    viewModel.stateDidChange = { [weak self] state in
+      self?.apply(state: state)
+    }
+  }
+
+  private func apply(state: CurrencyConverterViewModel.State) {
+    currentState = state
+
+    currencyLabel.text = state.currencyCode
+    countryLabel.text = state.countryName
+
+    if amountTextField.text != state.amountText {
+      amountTextField.text = state.amountText
     }
 
-    let result = viewModel.convert(amount: amount)
-    resultLabel.text = String(format: "$%.2f -> %.2f %@", amount, result, viewModel.exchangeRate.currencyCode)
+    resultLabel.text = state.resultText
+
+    guard let message = state.errorMessage else { return }
+    presentErrorAlert(message: message)
+  }
+
+  private func presentErrorAlert(message: String) {
+    let alert = UIAlertController(title: "입력 오류", message: message, preferredStyle: .alert)
+    alert.addAction(
+      UIAlertAction(title: "확인", style: .default) { [weak self] _ in
+        self?.viewModel.action?(.dismissError)
+      }
+    )
+    present(alert, animated: true)
+  }
+}
+
+extension CurrencyConverterViewController: UITextFieldDelegate {
+  func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+    textField.resignFirstResponder()
+    return true
   }
 }
