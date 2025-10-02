@@ -14,6 +14,7 @@ final class ExchangeRateViewModel: ViewModelProtocol {
     case appear
     case refresh
     case search(String)
+    case toggleFavorite(currencyCode: String, isFavorite: Bool)
     case dismissError
   }
 
@@ -52,15 +53,18 @@ final class ExchangeRateViewModel: ViewModelProtocol {
 
   private let fetchExchangeRatesUseCase: FetchExchangeRatesUseCaseProtocol
   private let getCountryNameUseCase: GetCountryNameUseCaseProtocol
+  private let updateFavoriteUseCase: UpdateExchangeRateFavoriteUseCaseProtocol
 
   private var allExchangeRates: [State.ExchangeRateRow] = []
 
   init(
     fetchExchangeRatesUseCase: FetchExchangeRatesUseCaseProtocol,
-    getCountryNameUseCase: GetCountryNameUseCaseProtocol
+    getCountryNameUseCase: GetCountryNameUseCaseProtocol,
+    updateFavoriteUseCase: UpdateExchangeRateFavoriteUseCaseProtocol
   ) {
     self.fetchExchangeRatesUseCase = fetchExchangeRatesUseCase
     self.getCountryNameUseCase = getCountryNameUseCase
+    self.updateFavoriteUseCase = updateFavoriteUseCase
     self.state = .initial
 
   }
@@ -71,6 +75,8 @@ final class ExchangeRateViewModel: ViewModelProtocol {
       await loadExchangeRates()
     case .search(let query):
       filterExchangeRates(with: query)
+    case .toggleFavorite(let currencyCode, let isFavorite):
+      await toggleFavorite(currencyCode: currencyCode, isFavorite: isFavorite)
     case .dismissError:
       setState { $0.errorMessage = nil }
     }
@@ -87,9 +93,10 @@ final class ExchangeRateViewModel: ViewModelProtocol {
     do {
       let rates = try await fetchExchangeRatesUseCase.execute()
       let rows = buildRows(from: rates)
-      allExchangeRates = rows
+      let sortedRows = sortRows(rows)
+      allExchangeRates = sortedRows
 
-      let filtered = filteredRows(with: state.searchQuery, from: rows)
+      let filtered = filteredRows(with: state.searchQuery, from: sortedRows)
       setState {
         $0.isLoading = false
         $0.exchangeRates = filtered
@@ -117,6 +124,53 @@ final class ExchangeRateViewModel: ViewModelProtocol {
     rates.map { rate in
       let countryName = getCountryNameUseCase.execute(currencyCode: rate.currencyCode)
       return State.ExchangeRateRow(exchangeRate: rate, countryName: countryName)
+    }
+  }
+
+  private func sortRows(_ rows: [State.ExchangeRateRow]) -> [State.ExchangeRateRow] {
+    rows.sorted { lhs, rhs in
+      if lhs.exchangeRate.isFavorite != rhs.exchangeRate.isFavorite {
+        return lhs.exchangeRate.isFavorite && !rhs.exchangeRate.isFavorite
+      }
+      return lhs.exchangeRate.currencyCode < rhs.exchangeRate.currencyCode
+    }
+  }
+
+  private func toggleFavorite(currencyCode: String, isFavorite: Bool) async {
+    let previousAllRows = allExchangeRates
+
+    guard let index = allExchangeRates.firstIndex(where: { row in
+      row.exchangeRate.currencyCode == currencyCode
+    }) else {
+      return
+    }
+
+    let row = allExchangeRates[index]
+    let updatedExchangeRate = ExchangeRate(
+      currencyCode: row.exchangeRate.currencyCode,
+      rate: row.exchangeRate.rate,
+      isFavorite: isFavorite
+    )
+    let updatedRow = State.ExchangeRateRow(
+      exchangeRate: updatedExchangeRate,
+      countryName: row.countryName
+    )
+
+    allExchangeRates[index] = updatedRow
+    allExchangeRates = sortRows(allExchangeRates)
+
+    let filtered = filteredRows(with: state.searchQuery, from: allExchangeRates)
+    setState { $0.exchangeRates = filtered }
+
+    do {
+      try await updateFavoriteUseCase.execute(currencyCode: currencyCode, isFavorite: isFavorite)
+    } catch {
+      allExchangeRates = previousAllRows
+      let restored = filteredRows(with: state.searchQuery, from: allExchangeRates)
+      setState {
+        $0.exchangeRates = restored
+        $0.errorMessage = error.localizedDescription
+      }
     }
   }
 

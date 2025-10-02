@@ -57,6 +57,9 @@ final class ExchangeRateCellView: UITableViewCell {
     return button
   }()
 
+  var onToggleFavorite: ((String, Bool) -> Void)?
+  private var currentExchangeRate: ExchangeRate?
+
   private let exchangeRateStackView: UIStackView = {
     let stackView = UIStackView()
     stackView.axis = .horizontal
@@ -69,9 +72,15 @@ final class ExchangeRateCellView: UITableViewCell {
     super.init(style: style, reuseIdentifier: reuseIdentifier)
     configureUI()
   }
-  
+
   required init?(coder: NSCoder) {
     fatalError("init(coder:) has not been implemented")
+  }
+
+  override func prepareForReuse() {
+    super.prepareForReuse()
+    onToggleFavorite = nil
+    currentExchangeRate = nil
   }
   
   private func configureUI() {
@@ -105,6 +114,7 @@ final class ExchangeRateCellView: UITableViewCell {
   }
 
   func configureCell(exchangeRate: ExchangeRate, countryName: String?) {
+    currentExchangeRate = exchangeRate
     if let countryName = countryName, !countryName.isEmpty {
       countryNameLabel.text = countryName
     } else {
@@ -113,10 +123,12 @@ final class ExchangeRateCellView: UITableViewCell {
     currencyNameLabel.text = exchangeRate.currencyCode
     exchangeRateLabel.text = String(format: "%.4f", exchangeRate.rate)
 
-    starToggleButton.isSelected = false
+    starToggleButton.isSelected = exchangeRate.isFavorite
   }
 
   @objc private func toggleFavorite() {
     starToggleButton.isSelected.toggle()
+    guard let currencyCode = currentExchangeRate?.currencyCode else { return }
+    onToggleFavorite?(currencyCode, starToggleButton.isSelected)
   }
 }

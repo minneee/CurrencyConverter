@@ -12,4 +12,5 @@ import Foundation
 /// - 구체적인 구현은 Data 계층에서 담당합니다.
 public protocol ExchangeRateRepositoryProtocol {
   func fetchExchangeRates() async throws -> [ExchangeRate]
+  func updateFavorite(currencyCode: String, isFavorite: Bool) async throws
 }

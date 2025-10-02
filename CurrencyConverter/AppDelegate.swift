@@ -14,13 +14,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   var window: UIWindow?
 
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-    let repository = ExchangeRateRepository()
+    let storage = CoreDataExchangeRateStorage(container: persistentContainer)
+    let repository = ExchangeRateRepository(localStorage: storage)
     let fetchExchangeRatesUseCase = FetchExchangeRatesUseCase(repository: repository)
     let currencyMetadataRepository = CurrencyMetadataRepository()
     let getCountryNameUseCase = GetCountryNameUseCase(repository: currencyMetadataRepository)
+    let updateFavoriteUseCase = UpdateExchangeRateFavoriteUseCase(repository: repository)
     let viewModel = ExchangeRateViewModel(
       fetchExchangeRatesUseCase: fetchExchangeRatesUseCase,
-      getCountryNameUseCase: getCountryNameUseCase
+      getCountryNameUseCase: getCountryNameUseCase,
+      updateFavoriteUseCase: updateFavoriteUseCase
     )
     let viewController = ExchangeRateViewController(viewModel: viewModel)
     let navigationController = UINavigationController(rootViewController: viewController)

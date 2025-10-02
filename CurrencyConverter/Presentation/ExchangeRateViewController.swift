@@ -151,6 +151,9 @@ extension ExchangeRateViewController: UITableViewDataSource {
 
     let row = currentState.exchangeRates[indexPath.row]
     cell.configureCell(exchangeRate: row.exchangeRate, countryName: row.countryName)
+    cell.onToggleFavorite = { [weak self] currencyCode, isFavorite in
+      self?.viewModel.action?(.toggleFavorite(currencyCode: currencyCode, isFavorite: isFavorite))
+    }
     return cell
   }
 }

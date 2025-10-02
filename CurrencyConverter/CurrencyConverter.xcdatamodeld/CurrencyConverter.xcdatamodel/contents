@@ -1,4 +1,23 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="1" systemVersion="11A491" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithCloudKit="false" userDefinedModelVersionIdentifier="">
-    <elements/>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="24299" systemVersion="24G90" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithCloudKit="false" userDefinedModelVersionIdentifier="">
+    <entity name="ExchangeRateEntity" representedClassName="ExchangeRateEntity" syncable="YES" codeGenerationType="class">
+        <attribute name="baseCode" attributeType="String" defaultValueString="USD"/>
+        <attribute name="changeDirection" attributeType="Integer 16" minValueString="-1" maxValueString="1" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isFavorite" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="lastUpdated" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="latestRate" attributeType="Decimal" defaultValueString="0.0"/>
+        <attribute name="previousRate" attributeType="Decimal" defaultValueString="0.0"/>
+        <attribute name="quoteCode" attributeType="String"/>
+    </entity>
+    <entity name="UserViewState" representedClassName="UserViewState" syncable="YES" codeGenerationType="class">
+        <attribute name="calculatorCurrencyCode" optional="YES" attributeType="String"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="lastSeenScreen" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+    </entity>
+    <elements>
+        <element name="ExchangeRateEntity" positionX="160" positionY="170" width="128" height="195"/>
+        <element name="UserViewState" positionX="160" positionY="394" width="128" height="135"/>
+    </elements>
 </model>

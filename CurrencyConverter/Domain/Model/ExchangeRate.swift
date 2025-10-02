@@ -13,4 +13,5 @@ import Foundation
 public struct ExchangeRate: Equatable {
   public let currencyCode: String
   public let rate: Double
+  public let isFavorite: Bool
 }
