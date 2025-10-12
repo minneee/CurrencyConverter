@@ -14,19 +14,62 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   var window: UIWindow?
 
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-    let storage = CoreDataExchangeRateStorage(container: persistentContainer)
-    let repository = ExchangeRateRepository(localStorage: storage)
-    let fetchExchangeRatesUseCase = FetchExchangeRatesUseCase(repository: repository)
+    let exchangeRateStorage = CoreDataExchangeRateStorage(container: persistentContainer)
+    let exchangeRateRepository = ExchangeRateRepository(localStorage: exchangeRateStorage)
+    let userViewStateStorage = CoreDataUserViewStateStorage(container: persistentContainer)
+    let userViewStateRepository = UserViewStateRepository(storage: userViewStateStorage)
+
+    let fetchExchangeRatesUseCase = FetchExchangeRatesUseCase(repository: exchangeRateRepository)
     let currencyMetadataRepository = CurrencyMetadataRepository()
     let getCountryNameUseCase = GetCountryNameUseCase(repository: currencyMetadataRepository)
-    let updateFavoriteUseCase = UpdateExchangeRateFavoriteUseCase(repository: repository)
+    let updateFavoriteUseCase = UpdateExchangeRateFavoriteUseCase(repository: exchangeRateRepository)
+    let getUserViewStateUseCase = GetUserViewStateUseCase(repository: userViewStateRepository)
+    let updateUserViewStateUseCase = UpdateUserViewStateUseCase(repository: userViewStateRepository)
+    let getPersistedExchangeRateUseCase = GetPersistedExchangeRateUseCase(repository: exchangeRateRepository)
+
     let viewModel = ExchangeRateViewModel(
       fetchExchangeRatesUseCase: fetchExchangeRatesUseCase,
       getCountryNameUseCase: getCountryNameUseCase,
       updateFavoriteUseCase: updateFavoriteUseCase
     )
-    let viewController = ExchangeRateViewController(viewModel: viewModel)
-    let navigationController = UINavigationController(rootViewController: viewController)
+    let exchangeRateViewController = ExchangeRateViewController(
+      viewModel: viewModel,
+      updateUserViewStateUseCase: updateUserViewStateUseCase
+    )
+
+    var rootViewControllers: [UIViewController] = [exchangeRateViewController]
+
+    let lastState: AppViewState?
+    do {
+      lastState = try getUserViewStateUseCase.execute()
+    } catch {
+      print("[UserViewState] 불러오기 실패: \(error.localizedDescription)")
+      lastState = nil
+    }
+
+    if case .currencyConverter(let currencyCode) = lastState?.screen {
+      do {
+        if let exchangeRate = try getPersistedExchangeRateUseCase.execute(currencyCode: currencyCode) {
+          let countryName = getCountryNameUseCase.execute(currencyCode: currencyCode) ?? "-"
+          let converterViewModel = CurrencyConverterViewModel(
+            exchangeRate: exchangeRate,
+            countryName: countryName
+          )
+          let converterViewController = CurrencyConverterViewController(
+            viewModel: converterViewModel,
+            updateUserViewStateUseCase: updateUserViewStateUseCase
+          )
+          rootViewControllers.append(converterViewController)
+        } else {
+          print("[UserViewState] 저장된 환율을 찾을 수 없어 리스트 화면으로 시작합니다.")
+        }
+      } catch {
+        print("[UserViewState] 환율 복원 실패: \(error.localizedDescription)")
+      }
+    }
+
+    let navigationController = UINavigationController()
+    navigationController.viewControllers = rootViewControllers
 
     // UIWindow 설정
     window = UIWindow(frame: UIScreen.main.bounds)

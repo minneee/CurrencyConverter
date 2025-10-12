@@ -12,6 +12,7 @@ class ExchangeRateViewController: UIViewController {
   private let viewModel: ExchangeRateViewModel
   private var currentState: ExchangeRateViewModel.State
   private let activityIndicator = UIActivityIndicatorView(style: .large)
+  private let updateUserViewStateUseCase: UpdateUserViewStateUseCaseProtocol
 
   private let emptyResultLabel: UILabel = {
     let label = UILabel()
@@ -37,9 +38,13 @@ class ExchangeRateViewController: UIViewController {
     return tableView
   }()
   
-  init(viewModel: ExchangeRateViewModel) {
+  init(
+    viewModel: ExchangeRateViewModel,
+    updateUserViewStateUseCase: UpdateUserViewStateUseCaseProtocol
+  ) {
     self.viewModel = viewModel
     self.currentState = viewModel.state
+    self.updateUserViewStateUseCase = updateUserViewStateUseCase
     super.init(nibName: nil, bundle: nil)
   }
   
@@ -58,6 +63,11 @@ class ExchangeRateViewController: UIViewController {
     bindViewModel()
 
     viewModel.action?(.appear)
+  }
+
+  override func viewDidAppear(_ animated: Bool) {
+    super.viewDidAppear(animated)
+    updateLastSeenScreen()
   }
   
   private func configureUI() {
@@ -121,6 +131,14 @@ class ExchangeRateViewController: UIViewController {
     let shouldShowEmptyState = !currentState.searchQuery.isEmpty && currentState.exchangeRates.isEmpty
     tableView.backgroundView = shouldShowEmptyState ? emptyResultLabel : nil
   }
+
+  private func updateLastSeenScreen() {
+    do {
+      try updateUserViewStateUseCase.execute(screen: .exchangeRateList)
+    } catch {
+      print("[UserViewState] 업데이트 실패 - 환율 리스트: \(error.localizedDescription)")
+    }
+  }
 }
 
 extension ExchangeRateViewController: UITableViewDelegate {
@@ -134,7 +152,12 @@ extension ExchangeRateViewController: UITableViewDelegate {
       countryName: row.countryName ?? "-"
     )
 
-    self.navigationController?.pushViewController(CurrencyConverterViewController(viewModel: converterVM), animated: true)
+    let converterVC = CurrencyConverterViewController(
+      viewModel: converterVM,
+      updateUserViewStateUseCase: updateUserViewStateUseCase
+    )
+
+    navigationController?.pushViewController(converterVC, animated: true)
   }
 }
 

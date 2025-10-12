@@ -68,6 +68,11 @@ final class ExchangeRateRepository: ExchangeRateRepositoryProtocol {
     return sortExchangeRates(remoteRates)
   }
 
+  func fetchPersistedExchangeRate(currencyCode: String) throws -> ExchangeRate? {
+    guard let persisted = try localStorage.fetchRate(for: currencyCode) else { return nil }
+    return makeDomainModel(from: persisted)
+  }
+
   private func requestLatestRates() async throws -> ExchangeRateResponseDTO {
     let request = session.request(url, method: .get).validate()
     let dataTask = request.serializingData()
@@ -79,6 +84,7 @@ final class ExchangeRateRepository: ExchangeRateRepositoryProtocol {
     ExchangeRate(
       currencyCode: persisted.currencyCode,
       rate: persisted.rate,
+      previousRate: persisted.previousRate,
       isFavorite: persisted.isFavorite
     )
   }

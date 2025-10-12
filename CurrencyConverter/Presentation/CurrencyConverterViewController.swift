@@ -11,6 +11,7 @@ import SnapKit
 class CurrencyConverterViewController: UIViewController {
   private let viewModel: CurrencyConverterViewModel
   private var currentState: CurrencyConverterViewModel.State
+  private let updateUserViewStateUseCase: UpdateUserViewStateUseCaseProtocol
 
   private let currencyLabel: UILabel = {
     let label = UILabel()
@@ -63,9 +64,13 @@ class CurrencyConverterViewController: UIViewController {
     return label
   }()
 
-  init(viewModel: CurrencyConverterViewModel) {
+  init(
+    viewModel: CurrencyConverterViewModel,
+    updateUserViewStateUseCase: UpdateUserViewStateUseCaseProtocol
+  ) {
     self.viewModel = viewModel
     self.currentState = viewModel.state
+    self.updateUserViewStateUseCase = updateUserViewStateUseCase
     super.init(nibName: nil, bundle: nil)
   }
   
@@ -83,6 +88,11 @@ class CurrencyConverterViewController: UIViewController {
     bindViewModel()
 
     viewModel.action?(.appear)
+  }
+
+  override func viewDidAppear(_ animated: Bool) {
+    super.viewDidAppear(animated)
+    updateLastSeenScreen()
   }
 
   private func configureUI() {
@@ -162,6 +172,14 @@ class CurrencyConverterViewController: UIViewController {
       }
     )
     present(alert, animated: true)
+  }
+
+  private func updateLastSeenScreen() {
+    do {
+      try updateUserViewStateUseCase.execute(screen: .currencyConverter(currencyCode: currentState.currencyCode))
+    } catch {
+      print("[UserViewState] 업데이트 실패 - 계산기 화면: \(error.localizedDescription)")
+    }
   }
 }
 

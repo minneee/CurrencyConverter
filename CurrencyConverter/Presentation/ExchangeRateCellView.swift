@@ -41,6 +41,13 @@ final class ExchangeRateCellView: UITableViewCell {
     label.font = UIFont.systemFont(ofSize: 16, weight: .regular)
     return label
   }()
+
+  private let trendIconLabel: UILabel = {
+    let label = UILabel()
+    label.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+    label.textAlignment = .center
+    return label
+  }()
   
   private let spacerView: UIView = {
     let view = UIView()
@@ -81,6 +88,8 @@ final class ExchangeRateCellView: UITableViewCell {
     super.prepareForReuse()
     onToggleFavorite = nil
     currentExchangeRate = nil
+    trendIconLabel.text = ""
+    trendIconLabel.textColor = .clear
   }
   
   private func configureUI() {
@@ -93,6 +102,7 @@ final class ExchangeRateCellView: UITableViewCell {
       labelStackView,
       spacerView,
       exchangeRateLabel,
+      trendIconLabel,
       starToggleButton
     ].forEach { exchangeRateStackView.addArrangedSubview($0) }
 
@@ -122,6 +132,7 @@ final class ExchangeRateCellView: UITableViewCell {
     }
     currencyNameLabel.text = exchangeRate.currencyCode
     exchangeRateLabel.text = String(format: "%.4f", exchangeRate.rate)
+    updateTrendIcon(for: exchangeRate)
 
     starToggleButton.isSelected = exchangeRate.isFavorite
   }
@@ -130,5 +141,16 @@ final class ExchangeRateCellView: UITableViewCell {
     starToggleButton.isSelected.toggle()
     guard let currencyCode = currentExchangeRate?.currencyCode else { return }
     onToggleFavorite?(currencyCode, starToggleButton.isSelected)
+  }
+
+  private func updateTrendIcon(for exchangeRate: ExchangeRate) {
+    switch exchangeRate.trend {
+    case .up:
+      trendIconLabel.text = "🔼"
+    case .down:
+      trendIconLabel.text = "🔽"
+    case .steady:
+      trendIconLabel.text = ""
+    }
   }
 }

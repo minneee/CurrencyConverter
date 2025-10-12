@@ -11,6 +11,7 @@ import Foundation
 struct PersistedExchangeRate {
   let currencyCode: String
   let rate: Double
+  let previousRate: Double?
   let isFavorite: Bool
   let lastUpdated: Date
   let changeDirection: Int16
@@ -56,26 +57,7 @@ final class CoreDataExchangeRateStorage {
     ]
 
     let rates = try context.performAndWaitThrowing { () throws -> [PersistedExchangeRate] in
-      try context.fetch(request).compactMap { object -> PersistedExchangeRate? in
-        guard
-          let code = object.value(forKey: Keys.quoteCode) as? String,
-          let rateNumber = object.value(forKey: Keys.latestRate) as? NSDecimalNumber,
-          let lastUpdated = object.value(forKey: Keys.lastUpdated) as? Date
-        else {
-          return nil
-        }
-
-        let isFavorite = object.value(forKey: Keys.isFavorite) as? Bool ?? false
-        let changeDirection = object.value(forKey: Keys.changeDirection) as? Int16 ?? 0
-
-        return PersistedExchangeRate(
-          currencyCode: code,
-          rate: rateNumber.doubleValue,
-          isFavorite: isFavorite,
-          lastUpdated: lastUpdated,
-          changeDirection: changeDirection
-        )
-      }
+      try context.fetch(request).compactMap(self.makePersistedExchangeRate(from:))
     }
 
     let formatter = ISO8601DateFormatter()
@@ -83,6 +65,18 @@ final class CoreDataExchangeRateStorage {
       "[CoreData환율 조회] - 날짜: \(formatter.string(from: startOfDay)), 결과: \(rates.count)건"
     )
     return rates
+  }
+
+  func fetchRate(for currencyCode: String) throws -> PersistedExchangeRate? {
+    let context = container.viewContext
+    let request = NSFetchRequest<NSManagedObject>(entityName: Keys.entityName)
+    request.predicate = NSPredicate(format: "%K == %@", Keys.quoteCode, currencyCode)
+    request.fetchLimit = 1
+
+    return try context.performAndWaitThrowing { () throws -> PersistedExchangeRate? in
+      guard let object = try context.fetch(request).first else { return nil }
+      return self.makePersistedExchangeRate(from: object)
+    }
   }
 
   func upsert(baseCode: String, rates: [String: Double], timestamp: Date) throws {
@@ -109,8 +103,10 @@ final class CoreDataExchangeRateStorage {
 
       for (code, rate) in rates {
         let managedObject: NSManagedObject
+        let isExisting: Bool
         if let existing = existingByCode.removeValue(forKey: code) {
           managedObject = existing
+          isExisting = true
           updatedCount += 1
         } else {
           managedObject = NSEntityDescription.insertNewObject(
@@ -119,6 +115,7 @@ final class CoreDataExchangeRateStorage {
           )
           managedObject.setValue(UUID(), forKey: Keys.id)
           managedObject.setValue(false, forKey: Keys.isFavorite)
+          isExisting = false
           insertedCount += 1
         }
 
@@ -127,17 +124,16 @@ final class CoreDataExchangeRateStorage {
         managedObject.setValue(normalizedDate, forKey: Keys.lastUpdated)
 
         let latestRate = NSDecimalNumber(value: rate)
-        if let previousLatest = managedObject.value(forKey: Keys.latestRate) as? NSDecimalNumber {
+        if isExisting, let previousLatest = managedObject.value(forKey: Keys.latestRate) as? NSDecimalNumber {
           managedObject.setValue(previousLatest, forKey: Keys.previousRate)
 
-          let comparisonResult = latestRate.compare(previousLatest)
+          let previousValue = previousLatest.doubleValue
+          let latestValue = rate
+          let delta = latestValue - previousValue
           let changeDirection: Int16
-          switch comparisonResult {
-          case .orderedAscending:
-            changeDirection = -1
-          case .orderedDescending:
-            changeDirection = 1
-          default:
+          if abs(delta) > 0.01 {
+            changeDirection = delta > 0 ? 1 : -1
+          } else {
             changeDirection = 0
           }
           managedObject.setValue(changeDirection, forKey: Keys.changeDirection)
@@ -179,6 +175,31 @@ final class CoreDataExchangeRateStorage {
         try context.save()
       }
     }
+  }
+}
+
+private extension CoreDataExchangeRateStorage {
+  func makePersistedExchangeRate(from object: NSManagedObject) -> PersistedExchangeRate? {
+    guard
+      let code = object.value(forKey: Keys.quoteCode) as? String,
+      let rateNumber = object.value(forKey: Keys.latestRate) as? NSDecimalNumber,
+      let lastUpdated = object.value(forKey: Keys.lastUpdated) as? Date
+    else {
+      return nil
+    }
+
+    let isFavorite = object.value(forKey: Keys.isFavorite) as? Bool ?? false
+    let changeDirection = object.value(forKey: Keys.changeDirection) as? Int16 ?? 0
+    let previousRateNumber = object.value(forKey: Keys.previousRate) as? NSDecimalNumber
+
+    return PersistedExchangeRate(
+      currencyCode: code,
+      rate: rateNumber.doubleValue,
+      previousRate: previousRateNumber?.doubleValue,
+      isFavorite: isFavorite,
+      lastUpdated: lastUpdated,
+      changeDirection: changeDirection
+    )
   }
 }
 

@@ -149,6 +149,7 @@ final class ExchangeRateViewModel: ViewModelProtocol {
     let updatedExchangeRate = ExchangeRate(
       currencyCode: row.exchangeRate.currencyCode,
       rate: row.exchangeRate.rate,
+      previousRate: row.exchangeRate.previousRate,
       isFavorite: isFavorite
     )
     let updatedRow = State.ExchangeRateRow(
