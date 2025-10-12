@@ -89,7 +89,7 @@ final class ExchangeRateCellView: UITableViewCell {
     onToggleFavorite = nil
     currentExchangeRate = nil
     trendIconLabel.text = ""
-    trendIconLabel.textColor = .clear
+    trendIconLabel.textColor = .text
   }
   
   private func configureUI() {
