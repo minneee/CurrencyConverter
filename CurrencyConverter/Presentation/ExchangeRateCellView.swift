@@ -147,10 +147,13 @@ final class ExchangeRateCellView: UITableViewCell {
     switch exchangeRate.trend {
     case .up:
       trendIconLabel.text = "🔼"
+//      trendIconLabel.textColor = .systemGreen
     case .down:
       trendIconLabel.text = "🔽"
+//      trendIconLabel.textColor = .systemRed
     case .steady:
       trendIconLabel.text = ""
+//      trendIconLabel.textColor = .secondaryText
     }
   }
 }

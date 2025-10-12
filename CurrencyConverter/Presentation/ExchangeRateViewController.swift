@@ -13,6 +13,11 @@ class ExchangeRateViewController: UIViewController {
   private var currentState: ExchangeRateViewModel.State
   private let activityIndicator = UIActivityIndicatorView(style: .large)
   private let updateUserViewStateUseCase: UpdateUserViewStateUseCaseProtocol
+  private lazy var refreshControl: UIRefreshControl = {
+    let control = UIRefreshControl()
+    control.addTarget(self, action: #selector(handleRefresh), for: .valueChanged)
+    return control
+  }()
 
   private let emptyResultLabel: UILabel = {
     let label = UILabel()
@@ -86,6 +91,8 @@ class ExchangeRateViewController: UIViewController {
       $0.top.equalTo(searchBar.snp.bottom)
       $0.leading.trailing.bottom.equalTo(view.safeAreaLayoutGuide)
     }
+
+    tableView.refreshControl = refreshControl
   }
   
   private func setupActivityIndicator() {
@@ -108,7 +115,15 @@ class ExchangeRateViewController: UIViewController {
   private func apply(state: ExchangeRateViewModel.State) {
     currentState = state
 
-    state.isLoading ? activityIndicator.startAnimating() : activityIndicator.stopAnimating()
+    if state.isLoading && !refreshControl.isRefreshing {
+      activityIndicator.startAnimating()
+    } else {
+      activityIndicator.stopAnimating()
+    }
+
+    if !state.isLoading {
+      refreshControl.endRefreshing()
+    }
 
     tableView.reloadData()
     updateEmptyState()
@@ -138,6 +153,11 @@ class ExchangeRateViewController: UIViewController {
     } catch {
       print("[UserViewState] 업데이트 실패 - 환율 리스트: \(error.localizedDescription)")
     }
+  }
+
+  @objc
+  private func handleRefresh() {
+    viewModel.action?(.refresh)
   }
 }
 

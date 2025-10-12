@@ -14,8 +14,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   var window: UIWindow?
 
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-    let exchangeRateStorage = CoreDataExchangeRateStorage(container: persistentContainer)
-    let exchangeRateRepository = ExchangeRateRepository(localStorage: exchangeRateStorage)
+    let exchangeRateRepository: ExchangeRateRepositoryProtocol
+    if AppConfiguration.useMockExchangeRates {
+      print("[AppConfiguration] Mock exchange rates enabled")
+      exchangeRateRepository = MockExchangeRateRepository()
+    } else {
+      let exchangeRateStorage = CoreDataExchangeRateStorage(container: persistentContainer)
+      exchangeRateRepository = ExchangeRateRepository(localStorage: exchangeRateStorage)
+    }
     let userViewStateStorage = CoreDataUserViewStateStorage(container: persistentContainer)
     let userViewStateRepository = UserViewStateRepository(storage: userViewStateStorage)
 

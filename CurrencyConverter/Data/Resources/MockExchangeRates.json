@@ -1,0 +1,35 @@
+[
+  {
+    "name": "Baseline",
+    "rates": {
+      "USD": 1.0,
+      "KRW": 1362.45,
+      "JPY": 149.23,
+      "EUR": 0.92,
+      "GBP": 0.79,
+      "CNY": 7.19
+    }
+  },
+  {
+    "name": "After Market Open",
+    "rates": {
+      "USD": 1.0,
+      "KRW": 1374.15,
+      "JPY": 148.01,
+      "EUR": 0.93,
+      "GBP": 0.78,
+      "CNY": 7.25
+    }
+  },
+  {
+    "name": "Closing",
+    "rates": {
+      "USD": 1.0,
+      "KRW": 1355.72,
+      "JPY": 150.04,
+      "EUR": 0.91,
+      "GBP": 0.8,
+      "CNY": 7.18
+    }
+  }
+]
