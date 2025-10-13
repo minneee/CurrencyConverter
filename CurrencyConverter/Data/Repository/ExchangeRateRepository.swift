@@ -5,38 +5,100 @@
 //  Created by 김민희 on 9/26/25.
 //
 
-import Foundation
 import Alamofire
+import Foundation
 
-/// Repository 구현체 (실제 네트워크 호출 담당)
-/// - Alamofire를 사용하여 API를 호출합니다.
-/// - API 응답(Entity)을 Domain 모델(ExchangeRate)로 변환합니다.
+/// Repository 구현체 (네트워크 + 로컬 캐시 관리)
+/// - Core Data에 저장된 데이터가 있으면 우선 반환합니다.
+/// - 없다면 API를 호출하고, 성공 시 Core Data에 갱신 후 반환합니다.
 final class ExchangeRateRepository: ExchangeRateRepositoryProtocol {
   private let url = "https://open.er-api.com/v6/latest/USD"
+  private let localStorage: CoreDataExchangeRateStorage
+  private let session: Session
+  private let calendar: Calendar
 
-  // 환율 정보를 비동기적으로 가져오는 함수입니다.
+  init(
+    localStorage: CoreDataExchangeRateStorage,
+    session: Session = AF,
+    calendar: Calendar = .current
+  ) {
+    self.localStorage = localStorage
+    self.session = session
+    self.calendar = calendar
+  }
+
   func fetchExchangeRates() async throws -> [ExchangeRate] {
-    let request = AF.request(url, method: .get)
-    // 서버 응답 코드가 200~299(성공 범위)에 있는지 자동으로 확인합니다.
-    // 만약 성공 범위가 아니면 에러를 발생시킵니다.
-      .validate()
+    let today = calendar.startOfDay(for: Date())
+    let todayString = ISO8601DateFormatter().string(from: today)
 
-    // 위에서 설정한 요청을 'Data' 타입으로 비동기 처리할 준비를 합니다.
+    do {
+      let cached = try localStorage.fetchRates(for: today)
+      if !cached.isEmpty {
+        print("[환율저장소] 로컬 캐시 - 날짜: \(todayString), 건수: \(cached.count)건")
+        return sortExchangeRates(cached.map(makeDomainModel))
+      }
+      print("[환율저장소] 로컬 캐시 없음 - 날짜: \(todayString)")
+    } catch {
+      print("[환율저장소] 로컬 캐시 조회 실패 - 오류: \(error.localizedDescription)")
+    }
+
+    let response = try await requestLatestRates()
+    print("[환율저장소] 네트워크 수신 완료 - 기준통화: \(response.base_code), 건수: \(response.rates.count)건")
+
+    do {
+      try localStorage.upsert(
+        baseCode: response.base_code,
+        rates: response.rates,
+        timestamp: today
+      )
+
+      let refreshed = try localStorage.fetchRates(for: today)
+      if !refreshed.isEmpty {
+        print("[환율저장소] 로컬 캐시 갱신 후 반환 - 날짜: \(todayString), 건수: \(refreshed.count)건")
+        return sortExchangeRates(refreshed.map(makeDomainModel))
+      }
+      print("[환율저장소] 로컬 캐시 갱신 결과 없음 - 네트워크 데이터 사용")
+    } catch {
+      print("[환율저장소] 로컬 캐시 갱신 실패 - 오류: \(error.localizedDescription), 네트워크 데이터 사용")
+    }
+
+    let remoteRates = response.rates
+      .map { ExchangeRate(currencyCode: $0.key, rate: $0.value, isFavorite: false) }
+    print("[환율저장소] 네트워크 데이터 반환 - 날짜: \(todayString), 건수: \(remoteRates.count)건")
+    return sortExchangeRates(remoteRates)
+  }
+
+  func fetchPersistedExchangeRate(currencyCode: String) throws -> ExchangeRate? {
+    guard let persisted = try localStorage.fetchRate(for: currencyCode) else { return nil }
+    return makeDomainModel(from: persisted)
+  }
+
+  private func requestLatestRates() async throws -> ExchangeRateResponseDTO {
+    let request = session.request(url, method: .get).validate()
     let dataTask = request.serializingData()
-
-    // 실제로 네트워크 요청을 보내는 부분입니다.
-    // 성공하면 서버가 보낸 데이터를 'data' 상수에 저장합니다.
-    // 실패하면(validate 실패 등) 에러를 던집니다.
     let data = try await dataTask.value
+    return try JSONDecoder().decode(ExchangeRateResponseDTO.self, from: data)
+  }
 
-    // JSONDecoder를 사용해 받아온 데이터(data)를
-    // Data에서 정의한 'ExchangeRateResponse' 구조체 형태로 디코딩합니다.
-    let response = try JSONDecoder().decode(ExchangeRateResponseDTO.self, from: data)
+  private func makeDomainModel(from persisted: PersistedExchangeRate) -> ExchangeRate {
+    ExchangeRate(
+      currencyCode: persisted.currencyCode,
+      rate: persisted.rate,
+      previousRate: persisted.previousRate,
+      isFavorite: persisted.isFavorite
+    )
+  }
 
-    // 디코딩된 'ExchangeRateResponse' 객체를 앱에서 사용할
-    // 도메인 모델('ExchangeRate'의 배열)로 변환하여 반환합니다.
-    return response.rates
-      .map { ExchangeRate(currencyCode: $0.key, rate: $0.value) }
-      .sorted(by: { $0.currencyCode < $1.currencyCode })
+  private func sortExchangeRates(_ rates: [ExchangeRate]) -> [ExchangeRate] {
+    rates.sorted { lhs, rhs in
+      if lhs.isFavorite != rhs.isFavorite {
+        return lhs.isFavorite && !rhs.isFavorite
+      }
+      return lhs.currencyCode < rhs.currencyCode
+    }
+  }
+
+  func updateFavorite(currencyCode: String, isFavorite: Bool) async throws {
+    try await localStorage.updateFavorite(for: currencyCode, isFavorite: isFavorite)
   }
 }

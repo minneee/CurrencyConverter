@@ -11,7 +11,7 @@ import SnapKit
 final class ExchangeRateCellView: UITableViewCell {
   static let id = "ExchangeRateCellView"
   
-  let currencyNameLabel: UILabel = {
+  private let currencyNameLabel: UILabel = {
     let label = UILabel()
     label.text = "KRW"
     label.textColor = .text
@@ -19,7 +19,7 @@ final class ExchangeRateCellView: UITableViewCell {
     return label
   }()
 
-  let countryNameLabel: UILabel = {
+  private let countryNameLabel: UILabel = {
     let label = UILabel()
     label.text = "대한민국"
     label.textColor = .secondaryText
@@ -27,30 +27,51 @@ final class ExchangeRateCellView: UITableViewCell {
     return label
   }()
 
-  let labelStackView: UIStackView = {
+  private let labelStackView: UIStackView = {
     let stackView = UIStackView()
     stackView.axis = .vertical
     stackView.spacing = 4
     return stackView
   }()
 
-  let exchangeRateLabel: UILabel = {
+  private let exchangeRateLabel: UILabel = {
     let label = UILabel()
     label.text = "0"
     label.textColor = .text
     label.font = UIFont.systemFont(ofSize: 16, weight: .regular)
     return label
   }()
+
+  private let trendIconLabel: UILabel = {
+    let label = UILabel()
+    label.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+    label.textAlignment = .center
+    return label
+  }()
   
-  let spacerView: UIView = {
+  private let spacerView: UIView = {
     let view = UIView()
     view.setContentHuggingPriority(.defaultLow, for: .horizontal)
     return view
   }()
-  
-  let exchangeRateStackView: UIStackView = {
+
+  private let starToggleButton: UIButton = {
+    let button = UIButton(type: .custom)
+    button.tintColor = .systemYellow
+    button.setImage(UIImage(systemName: "star"), for: .normal)
+    button.setImage(UIImage(systemName: "star.fill"), for: .selected)
+    button.backgroundColor = .clear
+    return button
+  }()
+
+  var onToggleFavorite: ((String, Bool) -> Void)?
+  private var currentExchangeRate: ExchangeRate?
+
+  private let exchangeRateStackView: UIStackView = {
     let stackView = UIStackView()
     stackView.axis = .horizontal
+    stackView.alignment = .center
+    stackView.spacing = 8
     return stackView
   }()
   
@@ -62,6 +83,14 @@ final class ExchangeRateCellView: UITableViewCell {
   required init?(coder: NSCoder) {
     fatalError("init(coder:) has not been implemented")
   }
+
+  override func prepareForReuse() {
+    super.prepareForReuse()
+    onToggleFavorite = nil
+    currentExchangeRate = nil
+    trendIconLabel.text = ""
+    trendIconLabel.textColor = .text
+  }
   
   private func configureUI() {
     contentView.backgroundColor = .background
@@ -72,7 +101,9 @@ final class ExchangeRateCellView: UITableViewCell {
     [
       labelStackView,
       spacerView,
-      exchangeRateLabel
+      exchangeRateLabel,
+      trendIconLabel,
+      starToggleButton
     ].forEach { exchangeRateStackView.addArrangedSubview($0) }
 
     [
@@ -84,9 +115,16 @@ final class ExchangeRateCellView: UITableViewCell {
       $0.top.bottom.equalToSuperview().inset(12)
       $0.leading.trailing.equalToSuperview().inset(30)
     }
+
+    starToggleButton.snp.makeConstraints {
+      $0.width.height.equalTo(26)
+    }
+
+    starToggleButton.addTarget(self, action: #selector(toggleFavorite), for: .touchUpInside)
   }
-  
+
   func configureCell(exchangeRate: ExchangeRate, countryName: String?) {
+    currentExchangeRate = exchangeRate
     if let countryName = countryName, !countryName.isEmpty {
       countryNameLabel.text = countryName
     } else {
@@ -94,5 +132,28 @@ final class ExchangeRateCellView: UITableViewCell {
     }
     currencyNameLabel.text = exchangeRate.currencyCode
     exchangeRateLabel.text = String(format: "%.4f", exchangeRate.rate)
+    updateTrendIcon(for: exchangeRate)
+
+    starToggleButton.isSelected = exchangeRate.isFavorite
+  }
+
+  @objc private func toggleFavorite() {
+    starToggleButton.isSelected.toggle()
+    guard let currencyCode = currentExchangeRate?.currencyCode else { return }
+    onToggleFavorite?(currencyCode, starToggleButton.isSelected)
+  }
+
+  private func updateTrendIcon(for exchangeRate: ExchangeRate) {
+    switch exchangeRate.trend {
+    case .up:
+      trendIconLabel.text = "🔼"
+//      trendIconLabel.textColor = .systemGreen
+    case .down:
+      trendIconLabel.text = "🔽"
+//      trendIconLabel.textColor = .systemRed
+    case .steady:
+      trendIconLabel.text = ""
+//      trendIconLabel.textColor = .secondaryText
+    }
   }
 }
